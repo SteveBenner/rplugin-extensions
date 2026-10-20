@@ -1,0 +1,19 @@
+schema: rplugin.extension/v1
+id: deepseek-tui
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to DeepSeek Harness (dsh, formerly deepseek-tui, now also Codewhale) - links its skill into the .agents/skills cross-tool convention under dsh's home.
+provides: [skills]
+confidence: unverified
+detect:
+  - env: DSH_HOME
+  - path: ~/.dsh
+  - path: ~/.deepseek
+requires: []
+notes: >
+  DeepSeek Harness is everything-is-a-plugin; its on-disk plugin path is not documented
+  upstream. This extension links into ${DSH_HOME:-$HOME/.dsh}/.agents/skills/<id>, the
+  one convention Hermes, Pi and dsh all honour per harnesses.yml's cross_tool notes,
+  rather than guessing a dsh-specific layout, and marks confidence unverified.
+  <home> is DSH_HOME, else ~/.dsh when it exists, else ~/.deepseek when it
+  exists, else ~/.dsh; detect.sh and plan.sh resolve it the same way.

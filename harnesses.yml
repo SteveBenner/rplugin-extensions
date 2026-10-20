@@ -1,0 +1,203 @@
+schema: rplugin.harnesses/v1
+description: >
+  What each harness's own convention is: the home env var (and, for
+  claude-code, the deprecated legacy var), the default home path or path
+  chain, where skills, agents and commands land, the interface file a
+  harness reads from inside the plugin package itself, the skill file
+  format, and how confident this catalogue is in the path. An extension's
+  extension.yml notes point back here rather than restating the paths.
+harnesses:
+  claude-code:
+    home_env: RPLUGIN_CLAUDE_HOME
+    host_env: CLAUDE_CONFIG_DIR
+    legacy_env: RSTACK_HARNESS_HOME
+    home_default: "~/.claude"
+    skills_dir: skills
+    agents_dir: agents
+    commands_dir: commands
+    rules_dir: rules/rplugin
+    interface_file: null
+    skill_format: markdown-front-matter
+    confidence: verified
+    docs_url: "https://docs.claude.com/en/docs/claude-code/overview"
+    native_files: [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", "hooks/hooks.json", ".mcp.json", "settings.json"]
+    mcp_file: ".mcp.json"
+    root_variable: "${CLAUDE_PLUGIN_ROOT}"
+    hooks:
+      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, stop: Stop, session_end: SessionEnd, subagent_start: SubagentStart }
+      matchers: { any: null, write: "Write|Edit|MultiEdit|NotebookEdit", shell: Bash, read: "Read|Glob|Grep|NotebookRead|LS|WebFetch|WebSearch" }
+      blocking: "exit 2 blocks PreToolUse and UserPromptSubmit"
+    limits:
+      - "a plugin's settings.json honours only agent and subagentStatusLine"
+      - "plugin agents ignore their own hooks and initialPrompt front matter"
+      - "a top-level bin/ goes on the Bash PATH inside Claude Code; Cowork refuses it"
+    notes: >
+      <home> is RPLUGIN_CLAUDE_HOME, else Claude Code's own CLAUDE_CONFIG_DIR,
+      else ~/.claude. Skills live in <home>/skills/<name> for each manifest
+      skill (its directory basename; falls back to <id> when the manifest
+      lists none) and agent definitions in <home>/agents/<name>.md for each
+      manifest agent (its file basename; falls back to <id>.md the same way),
+      the directories Claude Code reads. The legacy RSTACK_HARNESS_HOME names
+      the directory above claude/ and resolves to $RSTACK_HARNESS_HOME/claude.
+      commands_dir is declared for a future slash-command surface; no
+      extension links into it yet. Rules land in <home>/rules/rplugin/<plugin
+      id>/<rule file basename> for each manifest rule; Claude Code loads user
+      rules recursively and follows symlinked rule files (verified 2026-10-15).
+  codex:
+    home_env: CODEX_HOME
+    legacy_env: null
+    home_default: "~/.codex"
+    skills_dir: null
+    agents_dir: agents
+    commands_dir: null
+    interface_file: ".codex-plugin/plugin.json"
+    skill_format: markdown-front-matter
+    confidence: verified
+    docs_url: "https://developers.openai.com/codex/cli"
+    native_files: ["plugin.json", ".codex-plugin/plugin.json", ".agents/plugins/marketplace.json", "hooks/hooks.json"]
+    mcp_file: "plugin.json mcpServers"
+    root_variable: "${PLUGIN_ROOT}"
+    root_variable_verified: "codex-cli 0.159.3 and 0.160.0: ${PLUGIN_ROOT} in a server in the root Agent Plugins mcp.json expands to the installed copy under <home>/plugins/cache, the server runs with that root as its working directory, and PLUGIN_ROOT and CLAUDE_PLUGIN_ROOT are set in its environment and in plugin hook commands; ${CLAUDE_PLUGIN_ROOT} in args is not expanded. An Agent Plugins mcp.json server needs type. A server declared in .codex-plugin/plugin.json gets none of this (0.160.0): ${PLUGIN_ROOT} stays literal, no PLUGIN_ROOT is set and it runs in the session's folder, but a relative cwd such as \".\" resolves to the installed copy, so rplugin renders it with paths relative to the root and cwd \".\"."
+    hooks:
+      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, stop: Stop, session_end: null, subagent_start: null }
+      matchers: { any: null, write: "apply_patch|Write|Edit", shell: "Bash|shell|exec_command", read: view_image }
+      blocking: "exit 2 or permissionDecision deny blocks PreToolUse"
+    limits:
+      - "plugin hooks are skipped until the user reviews and trusts them"
+      - "skills arrive only through the native package; there is no user skills directory to link"
+      - "root plugin.json is preferred over .codex-plugin/plugin.json"
+    notes: >
+      agents_dir is <home>/agents, taking one TOML agent definition per
+      manifest agent (codex/agents/<n>.toml in the package, where <n> is that
+      agent's own basename) plus the plugin's own codex/agents/<id>.toml when
+      present, deduped when the two names coincide. interface_file lives
+      inside the plugin package itself and is read by Codex in place; this
+      catalogue's link plan never targets it.
+      No rules directory: a plugin's contents.rules does not reach this
+      harness; ship the guidance in a skill.
+  hermes:
+    home_env: HERMES_HOME
+    legacy_env: null
+    home_default: "~/.hermes"
+    skills_dir: skills
+    agents_dir: null
+    commands_dir: null
+    interface_file: null
+    skill_format: markdown-front-matter
+    confidence: verified
+    docs_url: null
+    notes: >
+      skills_dir is <home>/skills/<name> for each manifest skill (falls back
+      to <id> when the manifest lists none), documented upstream. Hermes' own
+      project_skills convention (.agents/skills) needs a per-project
+      `hermes skills trust` step this catalogue's installer does not
+      perform, so only the user-level skills directory is reached.
+      No rules directory: a plugin's contents.rules does not reach this
+      harness; ship the guidance in a skill.
+    native_files: []
+    mcp_file: "<home>/config.yaml mcp_servers"
+    root_variable: null
+    hooks:
+      events: { session_start: on_session_start, prompt_submit: pre_llm_call, pre_tool: pre_tool_call, post_tool: post_tool_call, stop: post_llm_call, session_end: on_session_end, subagent_start: null }
+      matchers: { any: null, write: "write_file|patch|execute_code", shell: terminal, read: "read_file|search_files|list_files|list_directory|web_search|web_extract|browser_.*" }
+      blocking: "fail_closed true on pre_tool_call; pre_llm_call cannot block"
+    limits:
+      - "hooks and MCP servers are profile-global, in the profile's config.yaml; the installer merges them into the default profile (or HERMES_HOME's) with a backup"
+      - "hooks need --accept-hooks or a one-time approval"
+      - "a profile alias shadows ~/.local/bin/<name>; create profiles with --no-alias"
+  pi:
+    home_env: PI_HOME
+    legacy_env: null
+    home_default: "~/.pi"
+    skills_dir: ".agents/skills"
+    agents_dir: null
+    commands_dir: null
+    interface_file: null
+    skill_format: markdown-front-matter
+    confidence: unverified
+    docs_url: null
+    notes: >
+      ~/.pi/agent/models.json is documented upstream; Pi's own skills
+      directory is not. skills_dir here is the cross_tool convention
+      (<home>/.agents/skills/<name> per manifest skill, falling back to <id>)
+      that Hermes, Pi and dsh all honour, not a Pi-specific path, so
+      confidence stays unverified until Pi documents its own. docs_url is
+      left null: no upstream documentation page for this convention is known.
+      No rules directory: a plugin's contents.rules does not reach this
+      harness; ship the guidance in a skill.
+  deepseek-tui:
+    home_env: DSH_HOME
+    legacy_env: null
+    home_default: ["~/.dsh", "~/.deepseek"]
+    skills_dir: ".agents/skills"
+    agents_dir: null
+    commands_dir: null
+    interface_file: null
+    skill_format: markdown-front-matter
+    confidence: unverified
+    docs_url: null
+    notes: >
+      DeepSeek Harness (dsh, formerly deepseek-tui, now also Codewhale) is
+      everything-is-a-plugin; its on-disk plugin path is not documented
+      upstream. skills_dir here is the same cross_tool convention pi uses
+      (<home>/.agents/skills/<name> per manifest skill, falling back to <id>),
+      rather than a guessed dsh-specific layout, so confidence stays
+      unverified. docs_url is left null: no upstream documentation page for
+      this convention is known.
+      No rules directory: a plugin's contents.rules does not reach this
+      harness; ship the guidance in a skill.
+  antigravity:
+    home_env: RPLUGIN_ANTIGRAVITY_HOME
+    legacy_env: null
+    home_default: "~/.gemini"
+    skills_dir: null
+    agents_dir: null
+    commands_dir: null
+    interface_file: "plugin.json"
+    skill_format: markdown-front-matter
+    confidence: unverified
+    docs_url: null
+    native_files: ["plugin.json", "mcp_config.json", "rules/"]
+    mcp_file: "mcp_config.json"
+    root_variable: null
+    hooks: null
+    limits:
+      - "Antigravity CLI (agy) installs a local plugin directory with `agy plugin install <path>`; without agy the package links to <home>/config/plugins/<id> (global) or <home>/antigravity-cli/plugins/<id> (CLI)"
+      - "the Antigravity 2.0 desktop app installs only Google-curated plugins from its UI"
+      - "hooks.json exists in the plugin format but no hook delivery has been observed; hooks are not rendered for antigravity and doctor says so"
+    notes: >
+      Gemini CLI was folded into Antigravity CLI (agy) on 2026-05-19. Plugin
+      layout: root plugin.json (name required), skills/, agents/, rules/,
+      mcp_config.json. Paths observed during a plugin setup; not yet documented
+      upstream in full, so confidence is unverified.
+  cowork:
+    home_env: null
+    legacy_env: null
+    home_default: null
+    skills_dir: null
+    agents_dir: null
+    commands_dir: null
+    interface_file: ".claude-plugin/marketplace.json"
+    skill_format: markdown-front-matter
+    confidence: verified
+    docs_url: null
+    remote: true
+    native_files: [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"]
+    mcp_file: ".mcp.json"
+    root_variable: "${CLAUDE_PLUGIN_ROOT}"
+    hooks: inherits claude-code
+    limits:
+      - "installed from a marketplace URL in Customize > Plugins (GitHub owner/repo, public GitLab or Bitbucket; private GitHub needs the Claude GitHub App); nothing is installed from this machine"
+      - "refuses a plugin with a top-level bin/ directory"
+      - "hooks and local MCP servers run on the user's computer"
+    notes: >
+      Claude Cowork and claude.ai share Claude Code's plugin format and
+      marketplace file. The cowork extension installs nothing; its check
+      enforces the bin/ rule when a plugin claims cowork support.
+cross_tool:
+  convention: ".agents/skills/<name>"
+  honoured_by: [hermes, pi, deepseek-tui]
+  notes: >
+    hermes also documents its own user-level skills_dir; pi and dsh have no
+    documented skills path of their own and fall back to this convention
+    entirely, which is why their confidence is unverified.

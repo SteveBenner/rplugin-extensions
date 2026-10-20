@@ -1,0 +1,32 @@
+schema: rplugin.extension/v1
+id: codex
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Codex - links its Codex agent definitions, or installs the whole package natively.
+provides: [agents, interface, skills, hooks, mcp]
+confidence: verified
+detect:
+  - env: CODEX_HOME
+  - path: ~/.codex
+requires: []
+native:
+  when: [hooks, mcp]
+  install:
+    - ["codex", "plugin", "marketplace", "add", "{root}"]
+    - ["codex", "plugin", "add", "{id}@{id}"]
+  uninstall:
+    - ["codex", "plugin", "remove", "{id}@{id}"]
+    - ["codex", "plugin", "marketplace", "remove", "{id}"]
+  carries: [skills, hooks, mcp]
+notes: >
+  Path from harnesses.yml's codex entry: agents is
+  ${CODEX_HOME:-$HOME/.codex}/agents. The interface_file convention
+  (.codex-plugin/plugin.json) lives inside the plugin package itself and is read by
+  Codex in place, so this extension's link plan only covers the agent definition
+  files and, when the plugin has built one, its profile file
+  (build/codex/<id>.config.toml to ${CODEX_HOME:-$HOME/.codex}/<id>.config.toml, which
+  `codex --profile <id>` layers over config.toml); plan.sh links no skills. skills, hooks and mcp are provided only through
+  the native block (`codex plugin marketplace add <root>` then `codex plugin add
+  <id>@<id>`), which Codex reads from .codex-plugin/plugin.json. The uninstall
+  step is `codex plugin remove`, the verb `codex plugin --help` names on this
+  machine.

@@ -1,0 +1,7 @@
+.scratch/
+.backup/
+TMP_AGENT_FILE_LOCKS.yml
+.rproject/
+DECISIONS.md
+TOKENS.jsonl
+TMP_AGENT_REPO_LOCK.yml

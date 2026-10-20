@@ -1,0 +1,74 @@
+schema: rplugin.extension/v1
+id: rstack
+kind: fleet
+catalogue_version: "2.7.1"
+description: Adapts the plugin to rStack's own supervised fleet - secrets via rvault, events via rlogs, decisions via rllm, a corpus/plugin registry via rprojectmanager, and a linked bin entry point.
+provides: [secrets, events, registry, schedule, decide, author]
+confidence: verified
+detect:
+  - env: RSTACK_BIN_HOME
+  - path: ~/.rstack
+requires: []
+adapters:
+  secrets: lib/secrets.rb
+  events: lib/events.rb
+  registry: lib/registry.rb
+  schedule: lib/schedule.rb
+  decide: lib/decide.rb
+  author: lib/author.rb
+rllm_contract:
+  version: 1
+  tenant: rplugin-decide
+  surfaces:
+    - id: decide
+      kind: background
+      selector: { profile: decision }
+      qos: interactive
+      qos_reason: "a harness hook is blocked on the decision, and a busy or unavailable model falls back to standalone decide at once"
+      priority: normal
+      on_busy: reject
+      deadline_ms: 12000
+      preemptible: false
+      mode: hold
+      states:
+        busy: { handler: fallback, fallback: standalone-decide }
+        unavailable: { handler: fallback, fallback: standalone-decide }
+    - id: author
+      kind: interactive
+      selector: { profile: analysis }
+      qos: interactive
+      qos_reason: "a person waits on a streamed authoring turn, and a busy or unavailable model surfaces to the declaring plugin, which falls back to its own standalone author"
+      priority: normal
+      on_busy: reject
+      deadline_ms: 120000
+      preemptible: false
+      mode: hold
+      states:
+        busy: { handler: fallback, fallback: standalone-author }
+        unavailable: { handler: fallback, fallback: standalone-author }
+notes: >
+  rstack is a fleet extension, not a harness, so it carries no entry in
+  harnesses.yml; it infers its own detect shape from RSTACK_BIN_HOME, the
+  fleet-equivalent of a harness home env var, plus the on-disk ~/.rstack fleet
+  state directory. lib/secrets.rb resolves rvault at
+  ${RVAULT_URL:-http://127.0.0.1:${RSTACK_PORT_RVAULT:-${RVAULT_PORT:-9085}}} and
+  lib/events.rb resolves rlogs at
+  ${RLOGS_URL:-http://127.0.0.1:${RSTACK_PORT_RLOGS:-${RLOGS_PORT:-9496}}},
+  mirroring rvault/lib/rvault/client.rb and rlogs/lib/rlogs/client.rb's own
+  base-url resolution; lib/registry.rb adds rprojectmanager at
+  ${RPROJECTMANAGER_URL:-http://127.0.0.1:${RSTACK_PORT_RPROJECTMANAGER:-${RPROJECTMANAGER_PORT:-1091}}}.
+  lib/decide.rb posts to rllm at
+  ${RLLM_URL:-http://127.0.0.1:${RSTACK_PORT_RLLM:-${RLLM_PORT:-3090}}}/api/decide on the decision profile with the
+  rllm-admission/1 envelope (tenant RPLUGIN_DECIDE_TENANT, default rplugin-decide; qos interactive because a person or
+  an agent waits on the answer; deadline 12000 ms; on_busy reject) and degrades to the standalone form at once on a
+  busy or unavailable answer or any other failure; RPLUGIN_DECIDE_DISABLED=1 raises before any request.
+  lib/author.rb backs a plugin-declared author port (open, turn and close): each turn posts the whole conversation to rllm at
+  the same base URL as decide, on POST /api/dispatch/stream with the profile RPLUGIN_AUTHOR_PROFILE (default analysis) and the
+  rllm-admission/1 envelope (tenant RPLUGIN_AUTHOR_TENANT, default rplugin-decide; qos interactive; deadline 120000 ms;
+  on_busy reject), reads the SSE stream, and emits delta and done events. Bounds: 3 s connect, 120 s read, at most 2 jittered
+  retries on 429, 5xx and network errors before the first output, a per-process bucket of 10 requests a minute; failures
+  raise PortUnavailable so the declaring plugin falls back to its standalone author. RPLUGIN_AUTHOR_DISABLED=1 raises before
+  any request.
+  lib/schedule.rb answers not-handled so the os extension installs the timer;
+  the fleet has no scheduler of its own. plan.sh emits nothing; the bin link is
+  the SDK installer's.

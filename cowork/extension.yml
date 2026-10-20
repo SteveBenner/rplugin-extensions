@@ -1,0 +1,19 @@
+schema: rplugin.extension/v1
+id: cowork
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Claude Cowork - a remote harness that installs from a marketplace URL, so this extension installs nothing and only checks the package rules.
+provides: []
+confidence: verified
+remote: true
+detect:
+  - command: claude
+requires: []
+notes: >
+  Cowork installs plugins from a marketplace URL in Customize > Plugins and
+  never from this machine, so plan.sh emits nothing. check.sh refuses the
+  install when the plugin root has a top-level bin/ directory and the
+  manifest's compatibility.harnesses.cowork is supported or skills-only,
+  because Cowork rejects such a package (harnesses.yml limits). detect.sh
+  reports the harness as present when the claude command is on PATH, since
+  the same package format and marketplace file are shared with Claude Code.

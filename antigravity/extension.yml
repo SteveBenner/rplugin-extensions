@@ -1,0 +1,28 @@
+schema: rplugin.extension/v1
+id: antigravity
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Antigravity CLI (agy) - installs the whole plugin package natively.
+provides: [skills, agents, rules, mcp]
+confidence: unverified
+detect:
+  - env: RPLUGIN_ANTIGRAVITY_HOME
+  - path: ~/.gemini
+  - command: agy
+requires: []
+native:
+  when: [rules, mcp]
+  install:
+    - ["agy", "plugin", "install", "{root}"]
+  link: "{home}/config/plugins/{id}"
+  carries: [skills, agents, rules, mcp]
+notes: >
+  Paths from harnesses.yml's antigravity entry. <home> is
+  RPLUGIN_ANTIGRAVITY_HOME, else ~/.gemini. Antigravity installs only whole
+  plugin packages: plan.sh emits nothing, so link mode installs nothing, and
+  skills, agents, rules and mcp are provided only through the native block
+  (`agy plugin install <root>`, or a link of the package root to
+  <home>/config/plugins/<id> when agy is absent). agy is not installed on the
+  machine this was authored on, so the argv follows harnesses.yml and could
+  not be checked against `agy --help`; confidence stays unverified. Hooks are
+  not rendered for antigravity (see harnesses.yml limits).

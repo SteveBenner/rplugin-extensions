@@ -1,0 +1,17 @@
+schema: rplugin.extension/v1
+id: pi
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Pi - links its skill into the .agents/skills cross-tool convention under Pi's home.
+provides: [skills]
+confidence: unverified
+detect:
+  - env: PI_HOME
+  - path: ~/.pi
+requires: []
+notes: >
+  ~/.pi/agent/models.json is documented upstream; Pi's own skills directory is not.
+  Rather than guess a Pi-specific layout, this extension links into
+  ${PI_HOME:-$HOME/.pi}/.agents/skills/<id>, the one convention Hermes, Pi and dsh all
+  honour per harnesses.yml's cross_tool notes, and marks confidence unverified so a
+  later, documented Pi convention does not silently read as a regression when it lands.

@@ -1,0 +1,29 @@
+schema: rplugin.extension/v1
+id: os
+kind: os
+catalogue_version: "2.7.1"
+description: Adapts the plugin to the operating system's own scheduler - systemd user units today, launchd and cron declared as shapes.
+provides: [schedule, notify]
+confidence: verified
+detect:
+  - command: systemctl
+  - command: launchctl
+  - command: crontab
+requires: []
+adapters:
+  schedule: lib/schedule.rb
+  notify: lib/notify.rb
+notes: >
+  systemd is the first adapter: detect and check probe systemctl --user directly,
+  and lib/schedule.rb installs, uninstalls and reports a job as a linked user unit
+  under ${RPLUGIN_SYSTEMD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user},
+  daemon-reload, enable --now. launchd (~/Library/LaunchAgents) and cron are
+  declared shapes this extension detects and check.sh validates the writable
+  target for; `rplugin doctor` reports them as not-yet-implemented until their
+  adapters land.
+  The notify adapter shells out to notify-send when it is on PATH and a D-Bus
+  session bus is set, and answers not-handled otherwise so the standalone form
+  records the message. A message with actions is sent by lib/notify_wait.js
+  under gjs instead, because GNOME delivers ActionInvoked only to the D-Bus
+  connection that created the notification, and libnotify 0.8.8 reports
+  GNOME 50 as action-less.

@@ -1,0 +1,26 @@
+schema: rplugin.extension/v1
+id: hermes
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Hermes - installs its skill under Hermes' user skills directory.
+provides: [skills, hooks, mcp]
+confidence: verified
+detect:
+  - env: HERMES_HOME
+  - path: ~/.hermes
+requires: []
+native:
+  when: [hooks, mcp]
+  merge:
+    format: yaml
+    target: "{home}/config.yaml"
+    renderer: hermes
+    backup: ".rplugin-backup"
+  carries: []
+notes: >
+  Path from harnesses.yml's hermes entry: user_skills is
+  ${HERMES_HOME:-$HOME/.hermes}/skills, verified from Nous Research docs. Hermes' own
+  project_skills convention (.agents/skills) needs a per-project `hermes skills trust`
+  step this installer does not perform; this extension only reaches the user-level
+  skills directory by link. hooks and mcp are provided only through the native
+  merge into {home}/config.yaml; skills stay linked, so carries is empty.

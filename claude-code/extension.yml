@@ -1,0 +1,42 @@
+schema: rplugin.extension/v1
+id: claude-code
+kind: harness
+catalogue_version: "2.7.1"
+description: Adapts the plugin to Claude Code - links its skills, agents, commands and rules, or installs the whole package natively.
+provides: [skills, agents, commands, rules, hooks, mcp]
+confidence: verified
+detect:
+  - env: RPLUGIN_CLAUDE_HOME
+  - env: CLAUDE_CONFIG_DIR
+  - env: RSTACK_HARNESS_HOME
+  - path: ~/.claude
+  - command: claude
+requires: []
+native:
+  when: [hooks, mcp, commands]
+  install:
+    - ["claude", "plugin", "marketplace", "add", "{root}"]
+    - ["claude", "plugin", "install", "{id}@{id}", "--scope", "user"]
+    - ["claude", "plugin", "marketplace", "update", "{id}"]
+    - ["claude", "plugin", "update", "{id}@{id}", "--scope", "user"]
+  uninstall:
+    - ["claude", "plugin", "uninstall", "{id}@{id}"]
+    - ["claude", "plugin", "marketplace", "remove", "{id}"]
+  carries: [skills, agents, commands, hooks, mcp]
+notes: >
+  Paths from harnesses.yml's claude-code entry. <home> is RPLUGIN_CLAUDE_HOME,
+  else CLAUDE_CONFIG_DIR, else ~/.claude; the plugin's skills/<id> links to
+  <home>/skills/<id> and its agents/<id>.md, when present, to
+  <home>/agents/<id>.md, which are the directories Claude Code reads.
+  RSTACK_HARNESS_HOME is read as a deprecated legacy fallback naming the
+  directory above claude/, so it resolves to $RSTACK_HARNESS_HOME/claude;
+  set RPLUGIN_CLAUDE_HOME instead. plan.sh also links each PLUGIN_COMMANDS
+  entry to <home>/commands/<basename>, so commands is provided in link mode.
+  It links each PLUGIN_RULES entry to <home>/rules/rplugin/<id>/<basename>,
+  which Claude Code reads recursively, in link and native mode alike.
+  hooks and mcp are provided only through the native block, which runs
+  `claude plugin marketplace add <root>` then `claude plugin install
+  <id>@<id> --scope user`, then `claude plugin marketplace update <id>` and
+  `claude plugin update <id>@<id> --scope user` so a reinstall of a newer
+  version replaces Claude Code's cached copy (both exit 0 when it is current;
+  argv confirmed against `claude plugin --help` on this machine).

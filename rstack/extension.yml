@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: rstack
 kind: fleet
-catalogue_version: "2.9.5"
+catalogue_version: "2.9.6"
 description: Adapts the plugin to rStack's own supervised fleet - secrets via rvault, events via rlogs, decisions via rllm, a corpus/plugin registry via rprojectmanager, and a linked bin entry point.
 provides: [secrets, events, registry, schedule, decide, author]
 confidence: verified

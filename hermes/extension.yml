@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: hermes
 kind: harness
-catalogue_version: "2.9.5"
+catalogue_version: "2.9.6"
 description: Adapts the plugin to Hermes - installs its skill under Hermes' user skills directory.
 provides: [skills, hooks, mcp]
 confidence: verified

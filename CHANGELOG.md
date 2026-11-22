@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.6] - 2026-11-22
+
+### Fixed
+
+- rstack registry: a failed call to rprojectmanager is now recorded. Before,
+  `register`, `retire`, and `corpora` swallowed every error and kept only the
+  local registry's answer. They now rescue only network and parse errors,
+  still fall back to the local registry exactly as before, and emit one
+  `registry.remote_failed` event (operation, error class, message) for each
+  failure.
+- rstack registry: a `corpora` reply that is not a JSON object, or that holds
+  entries that are not objects, now gives the local list instead of raising.
+
+### Changed
+
+- rstack: `RPLUGIN_REGISTRY_FILE_ONLY`, `RPROJECTMANAGER_URL`,
+  `RSTACK_PORT_RPROJECTMANAGER`, and `RPROJECTMANAGER_PORT` are read once, in
+  the new `rstack/lib/configuration.rb`. Precedence and the default port 1091
+  are unchanged.
+
 ## [2.9.5] - 2026-11-22
 
 ### Fixed

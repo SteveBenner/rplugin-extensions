@@ -4,11 +4,15 @@
 require "json"
 require "uri"
 require_relative "http"
+require_relative "configuration"
 
 module Rplugin
   module Adapters
     module Rstack
       class Registry < Rplugin::Ports::Base
+        REMOTE_ERRORS = [Net::OpenTimeout, Net::ReadTimeout, Net::HTTPBadResponse, Net::ProtocolError, IOError, SystemCallError, SocketError,
+                         JSON::ParserError, URI::InvalidURIError].freeze
+
         def resolve(corpus_id)
           return fallback.resolve(corpus_id) if file_only?
 
@@ -45,8 +49,10 @@ module Rplugin
 
         private
 
+        def config = @config ||= Configuration.new
+
         def file_only?
-          ENV["RPLUGIN_REGISTRY_FILE_ONLY"].to_s == "1"
+          config.registry_file_only?
         end
 
         def register_remote(id:, path:, owner:, protocol:)
@@ -55,13 +61,15 @@ module Rplugin
 
           http.post("/api/corpora/#{URI.encode_www_form_component(id)}/relationships",
                      body: JSON.generate(entity_type: "plugin", entity_id: owner, ownership_status: "owner"))
-        rescue StandardError
+        rescue *REMOTE_ERRORS => e
+          emit_remote_failure(:register, e)
           nil
         end
 
         def retire_remote(id)
           http.delete(["/api/corpora", URI.encode_www_form_component(id), "relationships", URI.encode_www_form_component(plugin_id)].join("/"))
-        rescue StandardError
+        rescue *REMOTE_ERRORS => e
+          emit_remote_failure(:retire, e)
           nil
         end
 
@@ -69,9 +77,19 @@ module Rplugin
           res = http.get("/api/corpora")
           return [] unless res.is_a?(Net::HTTPSuccess)
 
-          Array(JSON.parse(res.body.to_s)["corpora"]).map { |data| normalize(data) }
-        rescue StandardError
+          body = JSON.parse(res.body.to_s)
+          return [] unless body.is_a?(Hash)
+
+          Array(body["corpora"]).grep(Hash).map { |data| normalize(data) }
+        rescue *REMOTE_ERRORS => e
+          emit_remote_failure(:corpora, e)
           []
+        end
+
+        def emit_remote_failure(operation, error)
+          events&.emit("registry.remote_failed", { plugin_id: plugin_id, operation: operation.to_s, error: error.class.name, message: error.message })
+        rescue StandardError
+          nil
         end
 
         def merge_by_id(local, remote)
@@ -98,11 +116,7 @@ module Rplugin
         end
 
         def base_url
-          explicit = ENV["RPROJECTMANAGER_URL"]
-          return explicit unless explicit.nil? || explicit.empty?
-
-          port = ENV["RSTACK_PORT_RPROJECTMANAGER"] || ENV["RPROJECTMANAGER_PORT"] || "1091"
-          "http://127.0.0.1:#{port}"
+          config.rprojectmanager_url
         end
       end
     end

@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: claude-code
 kind: harness
-catalogue_version: "2.9.5"
+catalogue_version: "2.9.6"
 description: Adapts the plugin to Claude Code - links its skills, agents, commands and rules, or installs the whole package natively.
 provides: [skills, agents, commands, rules, hooks, mcp]
 confidence: verified

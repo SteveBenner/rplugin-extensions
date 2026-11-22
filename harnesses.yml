@@ -24,9 +24,10 @@ harnesses:
     mcp_file: ".mcp.json"
     root_variable: "${CLAUDE_PLUGIN_ROOT}"
     hooks:
-      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, stop: Stop, session_end: SessionEnd, subagent_start: SubagentStart }
+      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, post_tool_failure: PostToolUseFailure, stop: Stop, session_end: SessionEnd, subagent_start: SubagentStart, subagent_stop: SubagentStop }
       matchers: { any: null, write: "Write|Edit|MultiEdit|NotebookEdit", shell: Bash, read: "Read|Glob|Grep|NotebookRead|LS|WebFetch|WebSearch" }
       blocking: "exit 2 blocks PreToolUse and UserPromptSubmit"
+      async_field: async
     limits:
       - "a plugin's settings.json honours only agent and subagentStatusLine"
       - "plugin agents ignore their own hooks and initialPrompt front matter"
@@ -59,7 +60,7 @@ harnesses:
     root_variable: "${PLUGIN_ROOT}"
     root_variable_verified: "codex-cli 0.159.3 and 0.160.0: ${PLUGIN_ROOT} in a server in the root Agent Plugins mcp.json expands to the installed copy under <home>/plugins/cache, the server runs with that root as its working directory, and PLUGIN_ROOT and CLAUDE_PLUGIN_ROOT are set in its environment and in plugin hook commands; ${CLAUDE_PLUGIN_ROOT} in args is not expanded. An Agent Plugins mcp.json server needs type. A server declared in .codex-plugin/plugin.json gets none of this (0.160.0): ${PLUGIN_ROOT} stays literal, no PLUGIN_ROOT is set and it runs in the session's folder, but a relative cwd such as \".\" resolves to the installed copy, so rplugin renders it with paths relative to the root and cwd \".\"."
     hooks:
-      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, stop: Stop, session_end: null, subagent_start: null }
+      events: { session_start: SessionStart, prompt_submit: UserPromptSubmit, pre_tool: PreToolUse, post_tool: PostToolUse, post_tool_failure: null, stop: Stop, session_end: null, subagent_start: null, subagent_stop: null }
       matchers: { any: null, write: "apply_patch|Write|Edit", shell: "Bash|shell|exec_command", read: view_image }
       blocking: "exit 2 or permissionDecision deny blocks PreToolUse"
     limits:
@@ -98,7 +99,7 @@ harnesses:
     mcp_file: "<home>/config.yaml mcp_servers"
     root_variable: null
     hooks:
-      events: { session_start: on_session_start, prompt_submit: pre_llm_call, pre_tool: pre_tool_call, post_tool: post_tool_call, stop: post_llm_call, session_end: on_session_end, subagent_start: null }
+      events: { session_start: on_session_start, prompt_submit: pre_llm_call, pre_tool: pre_tool_call, post_tool: post_tool_call, post_tool_failure: null, stop: post_llm_call, session_end: on_session_end, subagent_start: null, subagent_stop: null }
       matchers: { any: null, write: "write_file|patch|execute_code", shell: terminal, read: "read_file|search_files|list_files|list_directory|web_search|web_extract|browser_.*" }
       blocking: "fail_closed true on pre_tool_call; pre_llm_call cannot block"
     limits:
@@ -153,12 +154,12 @@ harnesses:
     skills_dir: null
     agents_dir: null
     commands_dir: null
-    interface_file: "plugin.json"
+    interface_file: ".antigravity-plugin/plugin.json"
     skill_format: markdown-front-matter
     confidence: unverified
     docs_url: null
-    native_files: ["plugin.json", "mcp_config.json", "rules/"]
-    mcp_file: "mcp_config.json"
+    native_files: [".antigravity-plugin/plugin.json", "mcp.json", "rules/"]
+    mcp_file: "mcp.json"
     root_variable: null
     hooks: null
     limits:
@@ -167,8 +168,15 @@ harnesses:
       - "hooks.json exists in the plugin format but no hook delivery has been observed; hooks are not rendered for antigravity and doctor says so"
     notes: >
       Gemini CLI was folded into Antigravity CLI (agy) on 2026-05-19. Plugin
-      layout: root plugin.json (name required), skills/, agents/, rules/,
-      mcp_config.json. Paths observed during a plugin setup; not yet documented
+      layout: plugin.json (name required) at the root or in .antigravity-plugin/
+      or .gemini-plugin/, skills/, agents/, rules/ (each rule needs a trigger in
+      its front matter), mcp.json. agy 1.4.7 `plugin validate` reads
+      .antigravity-plugin/plugin.json, which Codex does not read, so a package
+      with hooks keeps Codex hooks working. Antigravity reads mcp.json, which
+      takes ${PLUGIN_ROOT}, while its Agent Plugins flag is on, and the native
+      mcp_config.json only while it is off; mcp_config.json has no root
+      variable, so a packaged copy would carry the packaging machine's path and
+      none is shipped. Otherwise not yet documented
       upstream in full, so confidence is unverified.
   cowork:
     home_env: null

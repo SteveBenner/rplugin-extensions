@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bin_home="${RSTACK_BIN_HOME:-$HOME/.local/bin}"
+bin_home=${RSTACK_BIN_HOME:-$HOME/.local/bin}
 
 probe="$bin_home"
 while [ ! -e "$probe" ] && [ "$probe" != "/" ]; do

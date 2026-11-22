@@ -34,7 +34,7 @@ if [ -n "${PLUGIN_AGENTS:-}" ]; then
 else
   agent_source="agents/$PLUGIN_ID.md"
   if [ -e "$PACKAGE_ROOT/$agent_source" ]; then
-    echo "$agent_source|$claude_home/agents/$PLUGIN_ID.md"
+    echo "$agent_source|$claude_home"/agents/"$PLUGIN_ID.md"
   fi
 fi
 

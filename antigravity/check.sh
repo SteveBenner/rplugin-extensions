@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-antigravity_home="${RPLUGIN_ANTIGRAVITY_HOME:-$HOME/.gemini}"
+antigravity_home=${RPLUGIN_ANTIGRAVITY_HOME:-$HOME/.gemini}
 
 probe="$antigravity_home"
 while [ ! -e "$probe" ] && [ "$probe" != "/" ]; do

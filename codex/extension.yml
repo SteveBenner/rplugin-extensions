@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: codex
 kind: harness
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to Codex - links its Codex agent definitions, or installs the whole package natively.
 provides: [agents, interface, skills, hooks, mcp]
 confidence: verified
@@ -14,6 +14,10 @@ native:
   install:
     - ["codex", "plugin", "marketplace", "add", "{root}"]
     - ["codex", "plugin", "add", "{id}@{id}"]
+  replace_source:
+    conflict: "already added from a different source"
+    remove: ["codex", "plugin", "marketplace", "remove", "{id}"]
+  copies: "{home}/plugins/cache/{id}/{id}"
   uninstall:
     - ["codex", "plugin", "remove", "{id}@{id}"]
     - ["codex", "plugin", "marketplace", "remove", "{id}"]

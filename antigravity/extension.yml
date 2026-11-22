@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: antigravity
 kind: harness
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to Antigravity CLI (agy) - installs the whole plugin package natively.
 provides: [skills, agents, rules, mcp]
 confidence: unverified

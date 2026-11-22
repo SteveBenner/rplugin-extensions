@@ -13,6 +13,6 @@ if [ -n "${PLUGIN_SKILLS:-}" ]; then
 else
   skills_source="skills/$PLUGIN_ID"
   if [ -e "$PACKAGE_ROOT/$skills_source" ]; then
-    echo "$skills_source|$pi_home/.agents/skills/$PLUGIN_ID"
+    echo "$skills_source|$pi_home"/.agents/skills/"$PLUGIN_ID"
   fi
 fi

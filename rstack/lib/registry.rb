@@ -60,7 +60,7 @@ module Rplugin
         end
 
         def retire_remote(id)
-          http.delete("/api/corpora/#{URI.encode_www_form_component(id)}/relationships/#{URI.encode_www_form_component(plugin_id)}")
+          http.delete(["/api/corpora", URI.encode_www_form_component(id), "relationships", URI.encode_www_form_component(plugin_id)].join("/"))
         rescue StandardError
           nil
         end

@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: os
 kind: os
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to the operating system's own scheduler - systemd user units today, launchd and cron declared as shapes.
 provides: [schedule, notify]
 confidence: verified

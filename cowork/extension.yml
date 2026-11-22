@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: cowork
 kind: harness
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to Claude Cowork - a remote harness that installs from a marketplace URL, so this extension installs nothing and only checks the package rules.
 provides: []
 confidence: verified

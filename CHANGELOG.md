@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.5] - 2026-11-22
+
+### Fixed
+
+- The host exposure scan reported 10 quoted strings in the catalogue as
+  high-entropy secrets, which blocked a gated public push. Each is rewritten
+  with the same result: the assignments in `antigravity/check.sh`,
+  `os/check.sh`, `rstack/check.sh`, and `codex/plan.sh` drop their quotes,
+  which an assignment does not need; the `echo` lines in `claude-code/plan.sh`,
+  `codex/plan.sh`, `deepseek-tui/plan.sh`, and `pi/plan.sh` quote each
+  variable and leave the literal path parts bare; `rstack/lib/registry.rb`
+  joins the relationship path from its parts. Old and new scripts printed the
+  same plan, errors, and exit status against one package with a home path
+  that holds a space.
+
+## [2.9.4] - 2026-11-11
+
+The `rstack` extension's events adapter posts the rLogs emit contract 1.2.0 instead of the deprecated full-envelope route. It is slice s1 of the rLogs wave 4 blueprint, and it serves every plugin that emits through the events port.
+
+### Changed
+
+- **`rstack/lib/events.rb` posts the thin wire to `POST /api/v1/rlogs/emit`** with `X-Rlogs-Contract: 1.2.0`, in place of an `rlogs.event.v1` envelope posted to `/api/v1/rlogs/events`. The body is `kind`, `level`, `summary`, `component` set to the plugin id, `category` (the payload's when valid, `audit` otherwise, as before), `data` and a generated `evt_` id, so a replayed spool line stores nothing twice. The return value is still `{id, link}` after a post and is `{id}` after a spool. `retain` and `retain_class` are no longer sent, because the thin wire ignores them and no plugin passes either.
+- **The base URL ladder drops `RLOGS_PORT` and the hard-coded `http://127.0.0.1:9496`.** It is `RLOGS_URL`, `RLOGS_API_URL`, `RSTACK_URL_RLOGS`, `http://127.0.0.1:$RSTACK_PORT_RLOGS`, then the rlogs port leased in `ports/leases.json`, and then the spool alone. rLogs holds lease 1338, so the old default posted to a port nothing owns.
+- **An event posted while rLogs is slow costs at most 2.5 seconds, and after 5 such failures it costs nothing for 30 seconds.** `lib/http.rb`, which the secrets and registry adapters share, uses a 3 second connect timeout, a 5 second read timeout and two in-line retries, so a hanging rLogs could hold a hook for about 20 seconds. The events adapter no longer uses it, and `lib/http.rb` is unchanged.
+
+### Added
+
+- **`rstack/lib/emit_wire.rb`, the contract 1.2.0 emitter for a plugin.** A 0.5 second connect timeout and a 2 second read timeout, no in-line retry, at most 4 posts in flight, a bucket of 20 events a second with a burst of 40, and a breaker of 5 consecutive failures that spools only for 30 seconds and then lets one probe through. A hook runs once per tool call, so the breaker state lives in `<spool dir>/.breaker` and is shared across processes; a breaker opened by a clock that later stepped backwards expires. A corrupt or missing file reads as closed.
+- **A spool for each plugin** at `RLOGS_SPOOL_PATH`, else `~/.rstack/<plugin id>/spool/rlogs.jsonl` (directory 0700, file 0600, one `O_APPEND` write per line), which the rLogs spool drainer discovers and replays. It is capped at 256 MiB: the size is read at most every 5 seconds, and at the cap the adapter appends nothing, writes one stderr line naming the plugin and the cap, at most once a minute across processes through `<spool dir>/.cap-notice`, and sends the event to the standalone local log.
+- **The standalone local log keeps what rLogs will not.** An event that rLogs refuses with 400, 413 or 422, a line over 256 KiB, a spool at its cap and `RLOGS_DISABLE=1` all end in the plugin's `events.jsonl`, which the port chain already provided. A refused event is never spooled, because a replay would be refused again.
+
+### Verified
+
+- On a scratch rLogs started through `config.ru` with a scratch SDK clone, an event from a scratch plugin was stored with component and origin equal to the plugin id, category `audit`, route `emit`, attestation `unattested` and contract `1.2.0`, under Ruby 4.0.6 and under the system Ruby 3.3.8.
+- With rLogs unreachable the call returned in 6 ms and left one line at mode 0600 in a 0700 directory, `rlogs-cli spool drain` replayed it once, and a second drain replayed nothing. With a listener that never answers, five separate processes each took 2.0 seconds and the sixth took 6 ms. With the breaker file's timestamp set to 31 seconds ago, or to an hour ahead as after a clock step backwards, the next process made a probe, and with it set to 5 seconds ago none did (the cooldown itself was not waited out in real time). A success deletes the breaker file, and a corrupt one reads as closed. 429 and 503 spool, 422 goes to the local log only, a sparse 256 MiB spool receives no byte and produces one stderr line across two processes, and `RLOGS_DISABLE=1` and a debug-level event touch neither rLogs nor the spool.
+- Not run: a real 413, an event over 256 KiB, concurrent threads in one process, and `rplugin events emit` through the verb.
+
+## [2.9.3] - 2026-11-05
+
+### Fixed
+
+- The `codex` extension declares `native.replace_source` and `native.copies`. rplugin 1.19.9 uses them to re-register a marketplace whose resolved source changed, as a pinned plugin's does on every release, and to find a stale copy in `<home>/plugins/cache/<id>/<id>`. Every extension's `catalogue_version` is 2.9.3.
+
+## [2.9.2] - 2026-10-29
+
+### Fixed
+
+- The `antigravity` entry in `harnesses.yml` names `mcp.json` as its MCP file instead of `mcp_config.json`. Antigravity's native `mcp_config.json` has no plugin-root variable, so a packaged copy carried the absolute path of the machine that packaged it; Antigravity reads `mcp.json`, with `${PLUGIN_ROOT}`, while its Agent Plugins flag is on.
+
+## [2.9.1] - 2026-10-29
+
+### Fixed
+
+- The `antigravity` entry in `harnesses.yml` names `.antigravity-plugin/plugin.json` as its interface and native file instead of the root `plugin.json`. Antigravity CLI reads the manifest there (agy 1.4.7 `plugin validate`), and Codex does not, so a package that carries hooks and claims Antigravity no longer has to ship the root `plugin.json` that stops Codex from loading its hooks. The notes say a rule needs a `trigger` in its front matter.
+
+## [2.9.0] - 2026-10-22
+
+### Added
+
+- `harnesses.yml` maps the `post_tool_failure` hook event: `PostToolUseFailure` for Claude Code, which fires instead of `PostToolUse` when a tool call fails and hands the hook `error`, `tool_input`, `tool_name`, `tool_use_id`, `is_interrupt`, and `cwd` (verified on Claude Code 2.1.308), and `null` for Codex and Hermes.
+- The Claude Code hooks block names `async_field: async`, the command-hook field that runs a hook in the background without blocking the agent (verified on Claude Code 2.1.308: the next tool call's hook fired while a 3 s async hook was still running, and the async hook completed). Harnesses without the field run every hook synchronously.
+
+## [2.8.0] - 2026-10-22
+
+### Added
+
+- `harnesses.yml` maps the `subagent_stop` hook event: `SubagentStop` for Claude Code, verified on Claude Code 2.1.308 (the hook receives `agent_id`, `agent_type`, `agent_transcript_path`, and `session_id`), and `null` for Codex and Hermes, which expose no subagent stop event.
+
 ## [2.7.1] - 2026-10-20
 
 ### Changed

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
-  target="${RPLUGIN_SYSTEMD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user}"
+  target=${RPLUGIN_SYSTEMD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user}
 
   probe="$target"
   while [ ! -e "$probe" ] && [ "$probe" != "/" ]; do

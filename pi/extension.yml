@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: pi
 kind: harness
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to Pi - links its skill into the .agents/skills cross-tool convention under Pi's home.
 provides: [skills]
 confidence: unverified

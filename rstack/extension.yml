@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: rstack
 kind: fleet
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to rStack's own supervised fleet - secrets via rvault, events via rlogs, decisions via rllm, a corpus/plugin registry via rprojectmanager, and a linked bin entry point.
 provides: [secrets, events, registry, schedule, decide, author]
 confidence: verified
@@ -51,11 +51,22 @@ notes: >
   harnesses.yml; it infers its own detect shape from RSTACK_BIN_HOME, the
   fleet-equivalent of a harness home env var, plus the on-disk ~/.rstack fleet
   state directory. lib/secrets.rb resolves rvault at
-  ${RVAULT_URL:-http://127.0.0.1:${RSTACK_PORT_RVAULT:-${RVAULT_PORT:-9085}}} and
-  lib/events.rb resolves rlogs at
-  ${RLOGS_URL:-http://127.0.0.1:${RSTACK_PORT_RLOGS:-${RLOGS_PORT:-9496}}},
-  mirroring rvault/lib/rvault/client.rb and rlogs/lib/rlogs/client.rb's own
-  base-url resolution; lib/registry.rb adds rprojectmanager at
+  ${RVAULT_URL:-http://127.0.0.1:${RSTACK_PORT_RVAULT:-${RVAULT_PORT:-9085}}},
+  mirroring rvault/lib/rvault/client.rb's own base-url resolution.
+  lib/events.rb posts the rLogs thin wire (emit contract 1.2.0) to
+  POST /api/v1/rlogs/emit, with the base URL taken from RLOGS_URL, RLOGS_API_URL,
+  RSTACK_URL_RLOGS, http://127.0.0.1:$RSTACK_PORT_RLOGS and then the rlogs port
+  leased in ports/leases.json, with no default port. It uses its own poster in
+  lib/emit_wire.rb and not lib/http.rb: a 0.5 s connect timeout, a 2 s read timeout
+  and no in-line retry; at most 4 posts in flight and a bucket of 20 events a second
+  with a burst of 40 per process; a breaker kept in the file .breaker beside the
+  spool, so that 5 failures across short-lived processes spool only for 30 s before
+  one probe; and a spool at RLOGS_SPOOL_PATH, else ~/.rstack/the plugin id/spool/rlogs.jsonl,
+  capped at 256 MiB, which the rLogs spool drainer replays. An event that rLogs
+  refuses (400, 413 or 422), a spool at its cap, a line over 256 KiB and
+  RLOGS_DISABLE=1 go to the standalone local log instead. The plugin sends no emit
+  token, so its events are unattested, and the category stays audit unless the
+  payload names a valid one. lib/registry.rb adds rprojectmanager at
   ${RPROJECTMANAGER_URL:-http://127.0.0.1:${RSTACK_PORT_RPROJECTMANAGER:-${RPROJECTMANAGER_PORT:-1091}}}.
   lib/decide.rb posts to rllm at
   ${RLLM_URL:-http://127.0.0.1:${RSTACK_PORT_RLLM:-${RLLM_PORT:-3090}}}/api/decide on the decision profile with the

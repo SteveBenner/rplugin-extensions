@@ -19,10 +19,10 @@ fi
 
 toml_source="codex/agents/$PLUGIN_ID.toml"
 if [ -e "$PACKAGE_ROOT/$toml_source" ]; then
-  echo "$toml_source|$codex_home/agents/$PLUGIN_ID.toml"
+  echo "$toml_source|$codex_home"/agents/"$PLUGIN_ID.toml"
 fi
 
-profile_source="build/codex/$PLUGIN_ID.config.toml"
+profile_source=build/codex/$PLUGIN_ID.config.toml
 if [ -e "$PACKAGE_ROOT/$profile_source" ]; then
-  echo "$profile_source|$codex_home/$PLUGIN_ID.config.toml"
+  echo "$profile_source|$codex_home"/"$PLUGIN_ID.config.toml"
 fi

@@ -1,7 +1,7 @@
 schema: rplugin.extension/v1
 id: deepseek-tui
 kind: harness
-catalogue_version: "2.7.1"
+catalogue_version: "2.9.5"
 description: Adapts the plugin to DeepSeek Harness (dsh, formerly deepseek-tui, now also Codewhale) - links its skill into the .agents/skills cross-tool convention under dsh's home.
 provides: [skills]
 confidence: unverified
